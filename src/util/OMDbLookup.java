@@ -14,12 +14,26 @@ import org.json.JSONObject;
 
 public class OMDbLookup {
 
-	public static ArrayList<String>getMovie(String movieTitle) {
+	public static Movie getMovie(String movieTitle) {
 		movieTitle = movieTitle.replace(" ", "-");  //format for the db
 		JSONObject jobj = getJSON(movieTitle);
-		ArrayList<String> arr = getInfo(jobj);
-		return arr;
+		Movie movie = getInfo(jobj);
+		return movie;
 	}
+	
+	public static Movie getSeries(ArrayList<String> seriesInfo) {
+		//format for the db
+		seriesInfo.set(0, seriesInfo.get(0).replace(" ", "-"));
+		seriesInfo.set(1, seriesInfo.get(1).replace(" ", ""));
+		seriesInfo.set(2, seriesInfo.get(2).replace(" ", ""));
+		
+		JSONObject jobj = getJSONSeries(seriesInfo);
+		Movie episode = getInfo(jobj);
+		return episode;
+	}
+	
+	
+	
 	/**
 	 * Gets information from json
 	 * Returns empty string for first value Movie not found for descript if it did not return / find a movie
@@ -28,23 +42,26 @@ public class OMDbLookup {
 	 * @param jobj
 	 * @return 
 	 */
-	private static ArrayList<String> getInfo(JSONObject jobj) {
-		ArrayList<String> arr = new ArrayList<String>();
+	private static Movie getInfo(JSONObject jobj) {
+		Movie movie = new Movie();
 		try {
 			//check if inserted title was correct
 			if(!Boolean.valueOf(jobj.get("Response").toString())) {
-				arr.add("");
-				arr.add("No Movie Found");
-				return arr;
+				movie.setTitle("");
+				movie.setPlot("No Movie Found");
+				movie.setRelease("x");
+				movie.setLength("x");
+				movie.setGenre("x");
+				movie.setRating("x");
+				return movie;
 			}
-			arr.add(jobj.get("Title").toString());
-			arr.add(jobj.get("Plot").toString());
-			arr.add(jobj.get("Released").toString());
-			arr.add(jobj.get("Runtime").toString());
-			arr.add(jobj.get("Genre").toString());
-			arr.add(jobj.get("imdbRating").toString());
-
-			return arr;
+			movie.setTitle(jobj.get("Title").toString());
+			movie.setPlot(jobj.get("Plot").toString());
+			movie.setRelease(jobj.get("Released").toString());
+			movie.setLength(jobj.get("Runtime").toString());
+			movie.setGenre(jobj.get("Genre").toString());
+			movie.setRating(jobj.get("imdbRating").toString());
+			return movie;
 			
 		} catch(JSONException e) {
 			e.printStackTrace();
@@ -118,13 +135,5 @@ public class OMDbLookup {
 		}
 	}
 	
-	public static ArrayList<String> getSeries(ArrayList<String> seriesInfo) {
-		//format for the db
-		seriesInfo.set(0, seriesInfo.get(0).replace(" ", "-"));
-		seriesInfo.set(1, seriesInfo.get(1).replace(" ", ""));
-		seriesInfo.set(2, seriesInfo.get(2).replace(" ", ""));
-		JSONObject jobj = getJSONSeries(seriesInfo);
-		ArrayList<String> arr = getInfo(jobj);
-		return arr;
-	}
+
 }

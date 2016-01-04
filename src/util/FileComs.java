@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,7 +17,7 @@ import java.util.Properties;
 import core.Main;
 
 public class FileComs {
-	
+
 	/**
 	 *  Check if db file exists
 	 * @return true if file is found and exists, false if no db file exists
@@ -28,7 +29,7 @@ public class FileComs {
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Creates database file
 	 * @return true if file created correctly
@@ -43,7 +44,7 @@ public class FileComs {
 		}
 		return false;
 	}
-	
+
 	/**
 	 * creates a config file
 	 * @return true if created successfully
@@ -60,7 +61,7 @@ public class FileComs {
 			return false;
 		}	
 	}
-	
+
 	/**
 	 * Make files under s to hold movies
 	 * @param s
@@ -75,7 +76,7 @@ public class FileComs {
 		fs.mkdir();
 		fh.mkdir();
 	}
-	
+
 	/**
 	 * Updates Property in config file (.logs/config.properties)
 	 * @param key
@@ -92,7 +93,7 @@ public class FileComs {
 			io.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Pulls Peroperty from config file (.logs/config.properties)
 	 * null if problem
@@ -111,33 +112,108 @@ public class FileComs {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Shift series episode from download location to storage space
 	 * @param moviePath
 	 * @param movieName
 	 */
 	public static String changeMoveSeries(String moviePath, ArrayList<String> seriesInfo) {	
-		File f = new File(moviePath);
+		File sourceFile = new File(moviePath);
 		String seriesFile = setFileNameSeries(seriesInfo, moviePath);
-		File f2 = new File(Main.DB_FILE_LOCATION+"/Series/" + seriesFile);
-		f.renameTo(f2);	
-		return f2.getAbsolutePath();
+		File destFile = new File(Main.DB_FILE_LOCATION+"/Series/" + seriesFile);
+		//f.renameTo(f2);	
+		//added after the fact
+		if(!destFile.exists()) {
+			try {
+				destFile.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		FileChannel source = null;
+		FileChannel destination = null;
+		try {
+			source = new FileInputStream(sourceFile).getChannel();
+			destination = new FileOutputStream(destFile).getChannel();
+
+			// previous code: destination.transferFrom(source, 0, source.size());
+			// to avoid infinite loops, should be:
+			long count = 0;
+			long size = source.size();              
+			while((count += destination.transferFrom(source, count, size-count))<size);
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+		finally {
+			if(source != null) {
+				try {
+					source.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			if(destination != null) {
+				try {
+					destination.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+		sourceFile.delete();
+
+		return destFile.getAbsolutePath();
 	}
-	
+
 	/**
 	 * Shift movie from download location to storage space
 	 * @param moviePath
 	 * @param movieName
 	 */
 	public static String changeMoveMovie(String moviePath, String movieName){
-		File f = new File(moviePath);
+		File sourceFile = new File(moviePath);
 		String movieFile = setFileName(movieName, moviePath);
-		File f2 = new File(Main.DB_FILE_LOCATION+"/Movies/" + movieFile);
-		f.renameTo(f2);
-		return f2.getAbsolutePath();
+		File destFile = new File(Main.DB_FILE_LOCATION+"/Movies/" + movieFile);
+		//f.renameTo(f2);
+		try {
+			if(!destFile.exists()) {
+				destFile.createNewFile();
+			}
+
+			FileChannel source = null;
+			FileChannel destination = null;
+			try {
+				source = new FileInputStream(sourceFile).getChannel();
+				destination = new FileOutputStream(destFile).getChannel();
+
+				// previous code: destination.transferFrom(source, 0, source.size());
+				// to avoid infinite loops, should be:
+				long count = 0;
+				long size = source.size();              
+				while((count += destination.transferFrom(source, count, size-count))<size);
+			}
+			finally {
+				if(source != null) {
+					source.close();
+				}
+				if(destination != null) {
+					destination.close();
+				}
+			}
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+
+		sourceFile.delete();
+
+		return destFile.getAbsolutePath();
 	}
-	
+
 	/**
 	 * Rename movie to something nice
 	 * @param s
@@ -151,7 +227,7 @@ public class FileComs {
 		moviefile += mp.substring(mp.lastIndexOf(".") + 1, mp.length()).toLowerCase();
 		return moviefile;		
 	}
-	
+
 	/**
 	 * Makes series filename
 	 * @param seriesInfo - episode info:  series name, series season, series episodeNumber
@@ -170,7 +246,7 @@ public class FileComs {
 
 	public static void removeFile(int id) {
 		String fp = DatabaseBaseFnc.getPath(id);
-		
+
 		File f = new File(fp);
 		if(f.exists())
 			f.delete();
@@ -185,20 +261,43 @@ public class FileComs {
 	 */
 	public static void copyMovie(String path) {
 		// TODO Auto-generated method stub
-		if(new File(path).exists()) {
-			Path p = Paths.get(path);
-			String stringPath1 = System.getProperty("user.home") + "/Desktop/LocalMedia/";		
-			Path p1 = Paths.get(stringPath1+p.getFileName().toString());
-			try {
-				new File(stringPath1).createNewFile();
-				if(!p1.toFile().exists())
-					Files.copy(p, p1);
-			} catch (IOException e) {
-				e.printStackTrace();
+
+		Path p = Paths.get(path);
+		String stringPath1 = System.getProperty("user.home") + "/Desktop/LocalMedia/";		
+		Path p1 = Paths.get(stringPath1+p.getFileName().toString());
+
+		File sourceFile = p.toFile();
+		File destFile = p1.toFile();
+		try {
+			if(!destFile.exists()) {
+				destFile.createNewFile();
 			}
+
+			FileChannel source = null;
+			FileChannel destination = null;
+			try {
+				source = new FileInputStream(sourceFile).getChannel();
+				destination = new FileOutputStream(destFile).getChannel();
+
+				// previous code: destination.transferFrom(source, 0, source.size());
+				// to avoid infinite loops, should be:
+				long count = 0;
+				long size = source.size();              
+				while((count += destination.transferFrom(source, count, size-count))<size);
+			}
+			finally {
+				if(source != null) {
+					source.close();
+				}
+				if(destination != null) {
+					destination.close();
+				}
+			}
+		} catch(IOException e) {
+			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * TODO: FINISH IT
 	 * Add method to clear out local media folder
@@ -209,5 +308,5 @@ public class FileComs {
 			f.delete();
 		}	
 	}
-	
+
 }

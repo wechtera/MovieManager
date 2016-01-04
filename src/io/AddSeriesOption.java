@@ -2,6 +2,8 @@ package io;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -73,11 +75,11 @@ public class AddSeriesOption extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				ArrayList<String> arr = new ArrayList<String>();
 				arr.add(seriesName.getText());
-				arr.add(seasonNum.getText());
-				arr.add(episodeNum.getText());
+				arr.add(seasonNum.getText().replace(" ", ""));
+				arr.add(episodeNum.getText().replace(" ", ""));
 				AddMovie.init(tf.getText(), arr, true);
 				f.dispose();
-				mp.fullDMLUpdate(mp.getSrbState());
+				mp.updateDML(mp.getSrbState());
 			}
 		});
 		

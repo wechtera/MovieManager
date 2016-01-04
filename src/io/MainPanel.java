@@ -2,8 +2,8 @@ package io;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultListModel;
@@ -15,8 +15,10 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import core.Main;
+import util.AddMovie;
 import util.DatabaseBaseFnc;
 import util.FileComs;
+import util.Title;
 
 public class MainPanel extends JPanel {
 	
@@ -29,10 +31,12 @@ public class MainPanel extends JPanel {
 	AddSeriesButton asb;
 	DeleteFromDatabaseButton rmb;
 	CleanLocalButton clb;
+	CorrectInfoButton cib;
 	JRadioButton mrb;
 	JRadioButton srb;
 	ButtonGroup radioGroup;
 	MoveMovie mmb;
+	SearchBar sb;
 	static int idSelected;
 	
 	public MainPanel() {
@@ -56,6 +60,9 @@ public class MainPanel extends JPanel {
 		//clean local
 		clb = new CleanLocalButton();
 		clb.addActionListener(new CleanLocalListener());
+		//Correct info
+		cib = new CorrectInfoButton();
+		cib.addActionListener(new CorrectInfoAct());
 		
 		//RadioButtonMovieSeries
 		radioGroup = new ButtonGroup();
@@ -74,22 +81,18 @@ public class MainPanel extends JPanel {
 		//TODO: Move to a seperate thing, maybe call full dml update
 		idSelected = 1;
 		
-		Map <Integer, String> m = DatabaseBaseFnc.getTitles(false);
 		dlm = new DefaultListModel<String>();
 		ids = new HashMap<Integer, Integer>();
-		int i =0;
-		for(int id : m.keySet()) { //Values added at 1 less than database id!!!
-			dlm.add(i,m.get(id));
-			ids.put(i, id);
-			i++;
-		}
 		
 		// JList information
 		jl = new JList<String>();
-		jl.setModel(dlm);
+		updateDML(false);
 		jl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		jl.setLayoutOrientation(JList.VERTICAL);
 		jl.setSelectedIndex(0);
+		
+		//Add search Bar
+		sb = new SearchBar(this);
 		
 		jl.addListSelectionListener(new SelectionChangedListener());
 		
@@ -100,12 +103,11 @@ public class MainPanel extends JPanel {
 		rmb.setBounds(230, 10, 100, 50);
 		mmb.setBounds(340, 10, 100, 50);
 		clb.setBounds(450, 10, 100, 50);
-		
+		sb.setBounds(560, 10, 500, 200);
 		jl.setBounds(10, 70, 320, 460);
-		
 		mrb.setBounds(10, 525, 100, 50);
 		srb.setBounds(120, 525, 100, 50);
-		
+		cib.setBounds(235, 535, 100, 30);
 		ip.setBounds(340, 100, 660, 500);
 		
 		
@@ -118,44 +120,52 @@ public class MainPanel extends JPanel {
 		add(jl);
 		add(mrb);
 		add(srb);
+		add(cib);
 		add(ip);
+		add(sb);
 	}
 	
-	//Couldnt put this in the action listener, it would update list too soon and take the last entry rather
-	//than the one I wanted to add to the list
-	/**
-	 * Updates our DML, may be deprecated by fullDMLUpdate??
-	 */
-	public void updateDML() {
-		HashMap<Integer, String> hm = DatabaseBaseFnc.getRecent();
-		for(int id : hm.keySet()) {
-			dlm.addElement(hm.get(id));
-			ids.put(dlm.indexOf(hm.get(id)), id);
-		}
-		System.out.println("Boop");
-		jl.setModel(dlm);
-		jl.setSelectedIndex(0);
-	}
+
+
 	/**
 	 * Updates our Default lost model completely form scratch
-	 * May slow down as we add more entries? TODO: STRESS TEST
+	 * May slow down as we add more entries? TODO: STRESS TEST and alphabetize
 	 * @param isSeries
 	 */
-	public void fullDMLUpdate(boolean isSeries) {
+	public void updateDML(boolean isSeries) {
 		
-		Map <Integer, String> m = DatabaseBaseFnc.getTitles(isSeries);
-
+		ArrayList<Title> titles = DatabaseBaseFnc.getTitles(isSeries);
+		
 		dlm = new DefaultListModel<String>();
 		ids.clear();
 		int i =0;
 
-		for(int id : m.keySet()) { //Values added at 1 less than database id!!!
-			dlm.add(i,m.get(id));
-			ids.put(i, id);
+		for(int j = 0; j < titles.size(); j++) { //Values added at 1 less than database id!!!
+			dlm.add(i,titles.get(j).getDispName());
+			ids.put(i, titles.get(j).getId());
 			i++;
 		}
 		jl.setModel(dlm);
 	}
+
+	/**
+	 * Updates list for search titles
+	 * @param titles
+	 */
+	public void setSearchModel(ArrayList<Title> titles) {
+		dlm = new DefaultListModel<String>();
+		ids.clear();
+		int i =0;
+
+		for(int j = 0; j < titles.size(); j++) { //Values added at 1 less than database id!!!
+			dlm.add(i,titles.get(j).getDispName());
+			ids.put(i, titles.get(j).getId());
+			i++;
+		}
+		jl.setModel(dlm);	
+	}
+
+
 	/**
 	 * Gets and returns if series radio button
 	 * is pushed
@@ -176,7 +186,7 @@ public class MainPanel extends JPanel {
 			FileComs.removeFile(ids.get(jl.getSelectedIndex()));
 			System.out.println("Hello There");
 			DatabaseBaseFnc.removeMovieFromDB(ids.get(jl.getSelectedIndex()));
-			fullDMLUpdate(isSeries);
+			updateDML(isSeries);
 		}
 	}
 	
@@ -218,9 +228,9 @@ public class MainPanel extends JPanel {
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			if(e.getActionCommand().equals("Movie"))
-				fullDMLUpdate(false);
+				updateDML(false);
 			else
-				fullDMLUpdate(true);	
+				updateDML(true);	
 		}
 	}
 	
@@ -235,6 +245,15 @@ public class MainPanel extends JPanel {
 			String path = DatabaseBaseFnc.getPath(ids.get(jl.getSelectedIndex()));
 			FileComs.copyMovie(path);
 		}	
+	}
+	
+	class CorrectInfoAct implements ActionListener {
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			new UpdateMovieTitleFrame(ids.get(jl.getSelectedIndex()), mp.getSrbState(), mp);
+		}
+		
 	}
 	
 	/**
@@ -255,5 +274,6 @@ public class MainPanel extends JPanel {
 			}
 		}
 	}
+	
 	
 }

@@ -9,6 +9,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import util.DatabaseBaseFnc;
+import util.Movie;
 
 public class InfoPanel extends JPanel {
 	private final JLabel titleL = new JLabel("Title: ");
@@ -78,13 +79,13 @@ public class InfoPanel extends JPanel {
 	}
 	
 	public void updateDisplay(int id) {
-		ArrayList<String> arr = DatabaseBaseFnc.getRow(id);
-		titleF.setText(arr.get(0));
-		releaseF.setText(arr.get(1));
-		genreF.setText(arr.get(2));
-		runtimeF.setText(arr.get(3));
-		ratingF.setText(arr.get(4));
-		plotA.setText(arr.get(5));
+		Movie m = DatabaseBaseFnc.getRow(id);
+		titleF.setText(m.getTitle());
+		releaseF.setText(m.getRelease());
+		genreF.setText(m.getGenre());
+		runtimeF.setText(m.getLength());
+		ratingF.setText(m.getRating());
+		plotA.setText(m.getPlot());
 	}
 
 }

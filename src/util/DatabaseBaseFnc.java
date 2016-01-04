@@ -1,5 +1,7 @@
 package util;
 
+import io.MainPanel;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -68,23 +70,23 @@ public class DatabaseBaseFnc {
      * @return
      */
     
-    public static boolean storeMovie(ArrayList<String> arr) {
+    public static boolean storeMovie(Movie movie) {
     	String s = "INSERT into MOVIES "
 				+ "(TITLE, RELEASE, GENRE, PLOT, LENGTH, RATING, LOCATION, SERIES_INFO, DISPLAY_INFO, IS_EPISODE) "
 				+ " VALUES (?,?,?,?,?,?,?,?,?,?);"; //need to work
     	try {
 			conn = connect(conn);
 			PreparedStatement stmt = conn.prepareStatement(s);
-			stmt.setString(1, arr.get(0));
-			stmt.setString(2, arr.get(2));
-			stmt.setString(3, arr.get(4));
-			stmt.setString(4, arr.get(1));
-			stmt.setString(5, arr.get(3));
-			stmt.setString(6, arr.get(5));
-			stmt.setString(7, arr.get(6));
-			stmt.setString(8, arr.get(7));
-			stmt.setString(9, arr.get(8));
-			stmt.setBoolean(10, Boolean.valueOf(arr.get(9)));
+			stmt.setString(1, movie.getTitle());
+			stmt.setString(2, movie.getRelease());
+			stmt.setString(3, movie.getGenre());
+			stmt.setString(4, movie.getPlot());
+			stmt.setString(5, movie.getLength());
+			stmt.setString(6, movie.getRating());
+			stmt.setString(7, movie.getLocation());
+			stmt.setString(8, movie.getSeriesInfo());
+			stmt.setString(9, movie.getDisplayInfo());
+			stmt.setBoolean(10, movie.getIsSeriesBool());
 			stmt.executeUpdate();
 			stmt.close();
 			conn.close();
@@ -100,30 +102,58 @@ public class DatabaseBaseFnc {
      * @param series - Gets eries titles?
      * @return
      */
-	public static HashMap<Integer, String> getTitles(boolean isSeries) {
+	public static ArrayList<Title> getTitles(boolean isSeries) {
 		//Decide what we're getting
 		String s = "";
 		if(!isSeries)
-			s = "SELECT ID, DISPLAY_INFO from Movies where IS_EPISODE = 0 ORDER BY DISPLAY_INFO DESC";
+			s = "SELECT ID, DISPLAY_INFO from Movies where IS_EPISODE = 0 ORDER BY DISPLAY_INFO ASC";
 		else
-			s = "SELECT ID, DISPLAY_INFO from MOVIES where IS_EPISODE = 1 ORDER BY DISPLAY_INFO DESC";
+			s = "SELECT ID, DISPLAY_INFO from MOVIES where IS_EPISODE = 1 ORDER BY DISPLAY_INFO ASC";
 		
-		HashMap <Integer, String> m = new HashMap<Integer, String>();
+		ArrayList <Title> titles = new ArrayList<Title>();
 		
 		try {
 			conn = connect(conn);
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(s);
 			while(rs.next())
-				m.put(rs.getInt(1), rs.getString(2));
+				titles.add(new Title(rs.getInt(1), rs.getString(2)));
 			rs.close();
 			stmt.close();
 			conn.close();
 		} catch(SQLException e) {
 			e.printStackTrace();
 		}
-		return m;
+		return titles;
 	}
+	
+	
+	public static ArrayList<Title> getTitlesSearch(boolean isSeries, String actionCommand, String text) {
+		String s ="";
+		if(!isSeries)
+			s = "SELECT ID, DISPLAY_INFO from Movies where IS_EPISODE = 0 AND "+actionCommand+" LIKE ? ORDER BY DISPLAY_INFO ASC";
+		else
+			s = "SELECT ID, DISPLAY_INFO from MOVIES where IS_EPISODE = 1 AND "+actionCommand+" LIKE ? ORDER BY DISPLAY_INFO ASC";
+		
+		ArrayList<Title> titles = new ArrayList<Title>();
+	
+		try {
+			conn = connect(conn);
+			PreparedStatement stmt = conn.prepareStatement(s);
+			stmt.setString(1, "%" + text + "%");
+			ResultSet rs = stmt.executeQuery();
+			while(rs.next())
+				titles.add(new Title(rs.getInt(1), rs.getString(2)));
+			rs.close();
+			stmt.close();
+			conn.close();
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+		
+		return titles;
+	}
+	
 	
 	/**
 	 * Removes a row from the database
@@ -131,7 +161,6 @@ public class DatabaseBaseFnc {
 	 */
 	public static void removeMovieFromDB(int id) {
 		String s = "DELETE from MOVIES where ID = " + id;
-		
 		try {
 			conn = connect(conn);
 			Statement stmt = conn.createStatement();
@@ -147,15 +176,15 @@ public class DatabaseBaseFnc {
 	 * Gets most recent entry
 	 * @return
 	 */
-	public static HashMap<Integer, String> getRecent() {
+	public static Title getRecent() {
 		String s = "SELECT ID, TITLE from Movies ORDER BY TIMESTAMP DESC LIMIT 1";
-		HashMap<Integer, String> m = new HashMap<Integer, String>();
+		Title recent = null;
 		try {
 			conn = connect(conn);
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(s);
 			while(rs.next()) {
-				m.put(rs.getInt(1), rs.getString(2));
+				recent = new Title(rs.getInt(1), rs.getString(2));
 			}
 			rs.close();
 			stmt.close();
@@ -163,28 +192,29 @@ public class DatabaseBaseFnc {
 		} catch(SQLException e) {
 			e.printStackTrace();
 		}
-		return m;
+		return recent;
 	}
 	
 	/**
 	 * Gets a full row from the database
+	 * TODO: Should return movie type would be better
 	 * @param id
 	 * @return
 	 */
-	public static ArrayList<String> getRow(int id) {
-		ArrayList<String> arr = new ArrayList<String>();
+	public static Movie getRow(int id) {
+		Movie movie = new Movie();
 		String s = "SELECT TITLE, RELEASE, GENRE, LENGTH, RATING, PLOT from MOVIES where id = " + Integer.toString(id);
 		try {
 			conn = connect(conn);
 			Statement stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery(s);
 			while(rs.next()) {
-				arr.add(rs.getString(1));
-				arr.add(rs.getString(2));
-				arr.add(rs.getString(3));
-				arr.add(rs.getString(4));
-				arr.add(rs.getString(5));
-				arr.add(rs.getString(6));
+				movie.setTitle(rs.getString(1));
+				movie.setRelease(rs.getString(2));
+				movie.setGenre(rs.getString(3));
+				movie.setLength(rs.getString(4));
+				movie.setRating(rs.getString(5));
+				movie.setPlot(rs.getString(6));
 			}
 			rs.close();
 			stmt.close();
@@ -192,7 +222,7 @@ public class DatabaseBaseFnc {
 		} catch(SQLException e) {
 			e.printStackTrace();
 		}
-		return arr;
+		return movie;
 	}
 	
 	/**

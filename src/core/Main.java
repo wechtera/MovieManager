@@ -30,6 +30,7 @@ public class Main {
 		else {
 			//get configs here
 			DB_FILE_LOCATION = FileComs.getProperties("dbLocation");
+			//DB_FILE_LOCATION = "/Users/wechtera/Desktop/Media";
 		}
         
         //Initiate window

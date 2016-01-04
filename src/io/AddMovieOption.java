@@ -30,9 +30,9 @@ public class AddMovieOption extends JFrame {
 	JFrame f;
 	MainPanel mp;
 	
-	public AddMovieOption(final MainPanel mp) {
+	public AddMovieOption(MainPanel mpa) {
 		f=this;
-		this.mp = mp;
+		mp = mpa;
 		jp = new JPanel();
 		//textfield with random location
 		tf = new JTextField(new File(".").getAbsolutePath());
@@ -51,7 +51,7 @@ public class AddMovieOption extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				jf = new JFileChooser();
-			    FileNameExtensionFilter filter = new FileNameExtensionFilter("Movie Files", "mpg", "m4v", "mp4", "wmv");
+			    FileNameExtensionFilter filter = new FileNameExtensionFilter("Movie Files", "mpg", "m4v", "mp4", "wmv", "mkv", "avi");
 			    jf.setFileFilter(filter);
 			    int returnVal = jf.showOpenDialog(getParent());
 			    if(returnVal == JFileChooser.APPROVE_OPTION)
@@ -67,7 +67,7 @@ public class AddMovieOption extends JFrame {
 				arr.add(nameField.getText());
 				AddMovie.init(tf.getText(), arr, false);
 				f.dispose();
-				mp.fullDMLUpdate(mp.getSrbState());
+				mp.updateDML(mp.getSrbState());
 			}
 		});
 		//Add and show
